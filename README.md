@@ -1,3 +1,5 @@
+[![Pipeline Status](https://github.com/sandialabs/BASS_matlab/actions/workflows/matlab.yml/badge.svg)](https://github.com/sandialabs/BASS_matlab/actions/workflows/matlab.yml)
+
 # BASS Matlab
 
 Implementation of Bayesian Adaptive Spline Surfaces in MATLAB
