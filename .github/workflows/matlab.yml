@@ -25,7 +25,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
       - name: Setup MALTAB
-        uses: matlab-actions/setup-matlab@v2
+        uses: matlab-actions/setup-matlab@v3
         with:
           release: ${{ matrix.release }}
           products: >
@@ -34,7 +34,7 @@ jobs:
       - name: Run build
         uses: matlab-actions/run-build@v3
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: BASS
           path: release/BASS.mltbx
@@ -44,7 +44,7 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           # unpacks default artifact into release/
           # if `name: artifact` is omitted, the action will create extra parent dir
@@ -52,20 +52,10 @@ jobs:
           path: ./release/
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/BASS/BASS.mltbx
-          asset_name: BASS.mltbx
-          asset_content_type: application/mltbx
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: release/*
