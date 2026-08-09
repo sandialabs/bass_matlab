@@ -117,7 +117,7 @@ classdef BassModel < handle
             end
         end
 
-        function out = predict(obj, X, mcmc_use, nugget)
+        function out = predict(obj, X, options)
             % BASS prediction using new inputs (after training).
 
             % X: matrix of predictors with dimension nxp, where n is the number of prediction points and
@@ -127,17 +127,17 @@ classdef BassModel < handle
             % nugget: whether to use the error variance when predicting.  If False, predictions are for mean function.
             %         a matrix of predictions with dimension mxn, with rows corresponding to MCMC samples and
             %         columns corresponding to prediction points.
-            if nargin < 3
-                mcmc_use = NaN;
-                nugget = false;
+            arguments
+                obj
+                X
+                options.mcmc_use = NaN
+                options.nugget = false
             end
-
-            if nargin < 4
-                nugget = false;
-            end
+            mcmc_use = options.mcmc_use;
+            nugget = options.nugget;
 
             Xs = normalizebass(X, obj.data.bounds);
-            if isnan(mcmc_use)
+            if isnan(mcmc_use) 
                 mcmc_use = 1:obj.nstore;
             end
 
