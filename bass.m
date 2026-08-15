@@ -87,7 +87,7 @@ nstore = floor((nmcmc-nburn) / thin);
 bm = BassModel(bd, bp, nstore);
 for i = 1:nmcmc
     bm.state.update();
-    if i > (nburn - 1) && mod(i - nburn, thin) == 0
+    if i > (nburn) && mod(i - nburn, thin) == 0
         bm.writeState();
     end
     if verbose
