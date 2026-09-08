@@ -45,7 +45,7 @@ setup = BassPCAsetup(y, center, scale);
 
 if isnan(npc)
     cs = cumsum(setup.evals) / sum(setup.evals) * 100;
-    npc = find(cs >= percVar, 1);
+    npc = find(cs > percVar, 1);
 end
 
 if ncores > npc

@@ -16,7 +16,7 @@ classdef BassData
             obj.xx_orig = xx;
             obj.y = y;
             obj.ssy = sum(y .* y);
-            obj.n = length(xx);
+            obj.n = size(xx,1);
             obj.p = size(xx,2);
             obj.bounds = zeros(obj.p, 2);
             for i = 1:obj.p

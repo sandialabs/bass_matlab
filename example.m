@@ -10,7 +10,7 @@ xx = rand(1000,p);
 y = f(x) + randn(n,1);
 
 mod = bass(x, y);
-pred = mod.predict(xx, [1,100], true);
+pred = mod.predict(xx, 'mcmc_use', [1,100], 'nugget', true);
 
 mod.plot()
 

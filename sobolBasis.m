@@ -75,17 +75,19 @@ classdef sobolBasis
             end
 
             for i = 1:length(prior)
-                if ~isfield(prior,'trunc')
-                    prior{i}.trunc = [0,1];
-                elseif isnan(prior{i}.trunc)
+                % bounds is p-by-2, so variable i is row i (not column i)
+                lb = bassMod.data.bounds(i,1);
+                ub = bassMod.data.bounds(i,2);
+
+                if ~isfield(prior{i},'trunc') || any(isnan(prior{i}.trunc))
                     prior{i}.trunc = [0,1];
                 else
-                    prior{i}.trunc = normalizebass(prior{i}.trunc, bassMod.data.bounds(:,i));
+                    prior{i}.trunc = (prior{i}.trunc - lb)./(ub - lb);
                 end
 
                 if strcmpi(prior{i}.dist, 'normal') || strcmpi(prior{i}.dist, 'student')
-                    prior{i}.mean = normalizebass(prior{i}.mean,bassMod.data.bounds(:,i));
-                    prior{i}.sd = prior{i}.sd./(bassMod.data.bounds(2,i)-bassMod.data.bounds(1,i));
+                    prior{i}.mean = (prior{i}.mean - lb)./(ub - lb);
+                    prior{i}.sd = prior{i}.sd./(ub - lb);
                     if strcmpi(prior{i}.dist, 'normal')
                         prior{i}.z = normpdf((prior{i}.trunc(2)-prior{i}.mean)/prior{i}.sd) - normpdf((prior{i}.trunc(1)-prior{i}.mean)/prior{i}.sd);
                     else
@@ -148,7 +150,7 @@ classdef sobolBasis
                     ints1_temp{i} = obj.func_hat(prior,u_list_temp{i},pc_mod,pcs,mcmc_use,f0r2,C1Basis_array);
                 end
             else
-                ints1_temp = arrayfun(@(x) obj.func_hat(prior,x,pc_mod,pcs,mcmc_use,f0r2,C1Basis_array), u_list_temp, 'UniformOutput', false);
+                ints1_temp = cellfun(@(x) obj.func_hat(prior,x,pc_mod,pcs,mcmc_use,f0r2,C1Basis_array), u_list_temp, 'UniformOutput', false);
             end
 
             V_tot = ints1_temp{1};
@@ -181,7 +183,8 @@ classdef sobolBasis
                     for j = 1:size(u_list{i},1)
                         cc = zeros(nxfunc,1);
                         for k = 1:(i-1)
-                            ind = arrayfun(@(x) all(ismember(x,u_list{i}(j,:))), u_list{k});
+                            % one flag per combination (row) of u_list{k}
+                            ind = all(ismember(u_list{k}, u_list{i}(j,:)), 2);
                             cc = cc + (-1)^(i-k)*sum(ints{k}(:,ind),2);
                         end
                         sob{i}(:,j) = ints{i}(:,j)+cc;
@@ -197,9 +200,10 @@ classdef sobolBasis
 
             vv = mean(sob_comb_var,1);
             [~,ord] = sort(vv,'descend');
-            cutoff = vv(ord(nind));
             if nind > length(ord)
                 cutoff = min(vv);
+            else
+                cutoff = vv(ord(nind));
             end
             use = sort(find(vv>=cutoff));
 
@@ -396,7 +400,7 @@ classdef sobolBasis
                 end
                 out = 0;
                 for k = 1:length(prior.weights)
-                    int = obj.intx1Student(b,prior.mean(k),prior.sd(k),prior.df(k),t) - intx1Student(a,prior.mean(k),prior.sd(k),prior.df(k),t);
+                    int = obj.intx1Student(b,prior.mean(k),prior.sd(k),prior.df(k),t) - obj.intx1Student(a,prior.mean(k),prior.sd(k),prior.df(k),t);
                     out = out + prior.weights(k)*int;
                 end
             end
@@ -467,7 +471,7 @@ classdef sobolBasis
             end
         end
 
-        function out = intx2Student(~,x,m,s,v,t1,t2)
+        function out = intx2Student(obj,x,m,s,v,t1,t2)
             temp = (s.^2.*v)/(m.^2 + s.^2.*v - 2*m.*x + x.^2);
             out = ((v/(v + (m - x).^2/s^2)).^(v/2) * ...
                 sqrt(temp) * ...
@@ -476,9 +480,9 @@ classdef sobolBasis
                 (1/temp).^(v/2)) + ...
                 3*(-t1+m)*(-t2+m)*(-1 + v)*(-m + x) * ...
                 (1/temp)^(v/2) * ...
-                robust2f1(1/2,(1 + v)/2,3/2,-(m - x)^2/(s^2 *v)) + ...
+                obj.robust2f1(1/2,(1 + v)/2,3/2,-(m - x)^2/(s^2 *v)) + ...
                 (-1+v)*(-m+x)^3*(1/temp)^(v/2) * ...
-                robust2f1(3/2,(1 + v)/2,5/2,-(m - x)^2/(s^2 *v)) )) / ...
+                obj.robust2f1(3/2,(1 + v)/2,5/2,-(m - x)^2/(s^2 *v)) )) / ...
                 (3*s *(-1 + v)* sqrt(v) *beta(v/2, 1/2)); ...
 
         end
@@ -549,10 +553,12 @@ classdef sobolBasis
             end
         end
 
-        function plot(obj,text,options)
+        function plot(obj,showText,options)
+            % showText is positional, so callers are unaffected by the name;
+            % it must not be called "text", which shadows the builtin used below.
             arguments
                 obj
-                text = false
+                showText = false
                 options.labels = [];
                 options.col = 'Paired'
                 options.time = [];
@@ -604,13 +610,13 @@ classdef sobolBasis
             title('Sensitivity')
             ylim([0,1])
             xlim([min(time) max(time)])
-            if text
+            if showText
                 [~,lab_x] = max(x_mean,[],2);
                 cs = zeros(size(sens,2)+1, size(sens,1));
                 cs(2:end,:) = cumsum(x_mean,1);
                 cs_diff = zeros(size(x_mean,1),size(x_mean,2));
                 for i = 1:size(x_mean,2)
-                    cs_diff(:,i) = diff(cumsum([0; x_mean(:,1)]));
+                    cs_diff(:,i) = diff(cumsum([0; x_mean(:,i)]));
                 end
                 tmp = [(1:length(lab_x))' lab_x];
                 ind = sub2ind(size(cs),tmp(:,1),tmp(:,2));
@@ -641,7 +647,7 @@ classdef sobolBasis
             xlabel('x')
             title('Variance Decomposition')
             xlim([min(time) max(time)])
-            if ~text
+            if ~showText
                 legend(labels1(1:idx),'Location','northwest')
             end
 

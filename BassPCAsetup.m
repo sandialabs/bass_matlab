@@ -41,9 +41,9 @@ classdef BassPCAsetup
             end
             obj.y_scale = obj.y;
             for i = 1:size(obj.y,1)
-                obj.y_scale(i,:) = (obj.y(i,:) - obj.y_mean)/obj.y_sd;
+                obj.y_scale(i,:) = (obj.y(i,:) - obj.y_mean)./obj.y_sd;
             end
-            [U,S,V] = svd(obj.y_scale');
+            [U,S,V] = svd(obj.y_scale','econ');
             obj.evals = diag(S).^2;
             obj.basis = U * S;
             obj.newy = V';
@@ -56,10 +56,10 @@ classdef BassPCAsetup
             % * right - eigenvalues (squared singular values), colored according to principal components
             cs = cumsum(obj.evals)/sum(obj.evals) * 100;
 
-            if nvargin < 2
+            if nargin < 2
                 npc = NaN;
-                percVar = NaN;
-            elseif nvargin < 1
+            end
+            if nargin < 3
                 percVar = NaN;
             end
 
@@ -67,7 +67,7 @@ classdef BassPCAsetup
                 npc = length(obj.evals);
             end
             if isnan(npc) && ~isnan(percVar)
-                npc = find(cs >= percVar, 1) + 1;
+                npc = find(cs >= percVar, 1);
             end
             if isnan(npc) || npc > length(obj.evals)
                 npc = length(obj.evals);
@@ -76,7 +76,7 @@ classdef BassPCAsetup
             figure()
             subplot(1,2,1)
             if npc < length(obj.evals)
-                plot(obj.basis(:,npc:end), 'Color', [0.6, 0.6, 0.6])
+                plot(obj.basis(:,(npc+1):end), 'Color', [0.6, 0.6, 0.6])
             end
             hold all
             for i = 1:npc
@@ -86,9 +86,9 @@ classdef BassPCAsetup
             xlabel('multivariate/functional index')
 
             subplot(1,2,2)
-            x = 1:length(obj.evals)+1;
+            x = 1:length(obj.evals);
             if npc < length(obj.evals)
-                scatter(x(npc:end), cs(npc:end), 'Color', [0.6, 0.6, 0.6])
+                scatter(x((npc+1):end), cs((npc+1):end), 'MarkerEdgeColor', [0.6, 0.6, 0.6])
             end
             hold all
             for i = 1:npc

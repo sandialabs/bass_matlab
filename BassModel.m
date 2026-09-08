@@ -90,8 +90,8 @@ classdef BassModel < handle
             xlabel('MCMC iteration (post-burn)')
 
             subplot(2,2,3)
-            yhat = mean(obj.predict(obj.data.xx_orig, NaN, false),1);
-            scatter(obj.data.y, yhat)
+            yhat = mean(obj.predict(obj.data.xx_orig),1)';
+            scatter(obj.data.y(:), yhat)
             refline(1,0)
             xlabel('observed')
             ylabel('posterior prediction')

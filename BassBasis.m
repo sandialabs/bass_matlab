@@ -99,7 +99,7 @@ classdef BassBasis
             if ncores == 1
                 pred_coefs = cell(1,obj.nbasis);
                 for i = 1:obj.nbasis
-                    pred_coefs{i} = obj.bm_list{i}.predict(X, mcmc_use, nugget);
+                    pred_coefs{i} = obj.bm_list{i}.predict(X, 'mcmc_use', mcmc_use, 'nugget', nugget);
                 end
             else
                 temp = PoolBassPredict(X, mcmc_use, nugget, obj.bm_list);

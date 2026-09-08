@@ -17,7 +17,7 @@ classdef PoolBassPredict
         end
 
         function pred = listpredict(obj, i)
-            pred = obj.bm_list(i).predict(obj.X, obj.mcmc_use, obj.nugget);
+            pred = obj.bm_list{i}.predict(obj.X, 'mcmc_use', obj.mcmc_use, 'nugget', obj.nugget);
         end
 
         function out = predict(obj, ncores, nlist)
@@ -25,7 +25,7 @@ classdef PoolBassPredict
                 parpool(ncores);
             end
             out = cell(1,nlist);
-            bar = ProgressBar(nrow_y, ...
+            bar = ProgressBar(nlist, ...
                 'IsParallel', true, ...
                 'WorkerDirectory', pwd, ...
                 'Title', 'Running MCMC Chains' ...
