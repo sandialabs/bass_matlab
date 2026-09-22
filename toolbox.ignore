@@ -33,3 +33,5 @@ resources
 .gitattributes
 .gitignore
 .git
+tests
+tests/*
