@@ -29,6 +29,12 @@ function bm = bass(xx, y, options)
 % a_tau: shape for gamma prior on 1/g in g-prior.
 % b_tau: scale for gamma prior on 1/g in g-prior.
 % verbose: boolean for printing progress
+% intercept: include a constant basis function (default true)
+% center_basis: center each basis function over the training inputs (default
+%   false).  With intercept = false the fitted function then averages to zero
+%   over the training inputs.
+% s2_fixed: hold the residual variance at this value instead of sampling it
+%   (default NaN, i.e. sample it)
 % returns an object of class BassModel, which includes predict and plot functions.
 
 arguments
@@ -50,6 +56,9 @@ arguments
     options.a_tau = 0.5
     options.b_tau = NaN
     options.verbose = true
+    options.intercept = true
+    options.center_basis = false
+    options.s2_fixed = NaN
 end
 
 nmcmc = options.nmcmc;
@@ -83,6 +92,9 @@ if verbose
     obj = ProgressBar(nmcmc, 'Title', 'Running BASS MCMC');
 end
 bp = BassPrior(maxInt, maxBasis, npart, g1, g2, s2_lower, h1, h2, a_tau, b_tau, w1, w2);
+bp.intercept = options.intercept;
+bp.center_basis = options.center_basis;
+bp.s2_fixed = options.s2_fixed;
 nstore = floor((nmcmc-nburn) / thin);
 bm = BassModel(bd, bp, nstore);
 for i = 1:nmcmc

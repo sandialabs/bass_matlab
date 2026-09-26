@@ -52,7 +52,7 @@ classdef BassModel < handle
             obj.samples.s2(obj.k) = obj.state.s2;
             obj.samples.lam(obj.k) = obj.state.lam;
             obj.samples.tau(obj.k) = obj.state.tau;
-            obj.samples.beta(obj.k, 1:(obj.state.nbasis + 1)) = obj.state.beta;
+            obj.samples.beta(obj.k, 1:obj.state.nc) = obj.state.beta;
             obj.samples.nbasis(obj.k) = obj.state.nbasis;
 
             if obj.state.cmod % basis part of state was changed
@@ -103,17 +103,25 @@ classdef BassModel < handle
         end
 
         function mat = makeBasisMatrix(obj, model_ind, X)
-            % Make basis matrix for model
+            % Make basis matrix for model.  X is on the normalized (0-1)
+            % scale.  With prior.center_basis, each basis function has its
+            % training mean subtracted, as it did during fitting.
             nb = obj.samples.nbasis_models(model_ind);
             n = size(X,1);
-            mat = zeros(n,nb+1);
-            mat(:,1) = ones(n,1);
+            i0 = double(obj.prior.intercept);
+            mat = zeros(n,nb+i0);
+            if i0
+                mat(:,1) = ones(n,1);
+            end
             for m = 1:nb
                 ind = 1:obj.samples.n_int(model_ind,m);
                 signs = squeeze(obj.samples.signs(model_ind,m,ind));
                 vs = squeeze(obj.samples.vs(model_ind,m,ind));
                 knots = squeeze(obj.samples.knots(model_ind,m,ind));
-                mat(:, m+1) = makeBasis(signs, vs, knots, X);
+                mat(:, m+i0) = makeBasis(signs, vs, knots, X);
+                if obj.prior.center_basis
+                    mat(:, m+i0) = mat(:, m+i0) - mean(makeBasis(signs, vs, knots, obj.data.xx));
+                end
             end
         end
 
@@ -144,12 +152,12 @@ classdef BassModel < handle
             out = zeros(length(mcmc_use), size(Xs,1));
             models = obj.model_lookup(mcmc_use);
             umodels = unique(models);
-            k1 = 1;
             for j = 1:length(umodels)
-                mcmc_use_j = mcmc_use(models==umodels(j));
-                nn = length(mcmc_use_j);
-                out(k1:(k1+nn-1),:) = obj.samples.beta(mcmc_use_j, 1:(obj.samples.nbasis_models(umodels(j))+1)) * obj.makeBasisMatrix(umodels(j),Xs)';
-                k1 = k1 + nn;
+                % rows of out follow the order of mcmc_use
+                rows_j = find(models == umodels(j));
+                mcmc_use_j = mcmc_use(rows_j);
+                nc_j = obj.samples.nbasis_models(umodels(j)) + double(obj.prior.intercept);
+                out(rows_j,:) = obj.samples.beta(mcmc_use_j, 1:nc_j) * obj.makeBasisMatrix(umodels(j),Xs)';
             end
 
             if nugget

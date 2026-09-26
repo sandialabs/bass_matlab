@@ -14,6 +14,11 @@ classdef BassPrior
         b_tau
         w1
         w2
+        % Options for fitting as one block of a larger Gibbs sampler (see
+        % bassGibbs).  The defaults reproduce the original model.
+        intercept = true        % include a constant basis function
+        center_basis = false    % center each basis column over the training inputs
+        s2_fixed = NaN          % hold s2 at this value instead of sampling it
     end
 
     methods
