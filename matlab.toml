@@ -1,0 +1,30 @@
+name = "BASS"
+
+[project.labels."Toolbox - Toolbox1"]
+"Toolbox Image File" = [
+]
+"Getting Started Guide" = [
+]
+"App Gallery File" = [
+]
+
+[[package]]
+configuration-name = "BASS"
+supported-platforms = [
+    "windows",
+    "linux",
+    "macos",
+]
+use-license-bsd = false
+output-folder = "release"
+output-file-name = "BASS.mltbx"
+provider.organization = ""
+provider.name = "J. Derek Tucker"
+provider.email = "jdtuck@sandia.gov"
+name = "BASS"
+description = ""
+display-name = "BASS"
+summary = "Implementation of Bayesian Adaptive Spline Surfaces in MATLAB"
+package-root = "/"
+version = "1.0.2"
+id = "9da20a9d-33c3-40f7-b1b1-a28480648d59"
