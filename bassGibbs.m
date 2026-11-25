@@ -40,6 +40,8 @@ classdef bassGibbs < handle
 
     properties
         bm      % BassModel: data, prior, the chain's state and saved samples
+        n_prop = 0  % RJMCMC proposals made by step()
+        n_acc = 0   % ... and accepted
     end
 
     methods
@@ -96,7 +98,10 @@ classdef bassGibbs < handle
             % Advance the chain by n_steps updates against the current response.
             if nargin < 2, n_steps = 1; end
             for k = 1:n_steps
+                before = sum(obj.bm.state.count);
                 obj.bm.state.rjStep();
+                obj.n_prop = obj.n_prop + 1;
+                obj.n_acc = obj.n_acc + (sum(obj.bm.state.count) > before);
                 obj.bm.state.gibbsStep();
             end
         end
@@ -113,6 +118,16 @@ classdef bassGibbs < handle
 
         function n = nbasis(obj)
             n = obj.bm.state.nbasis;
+        end
+
+        function r = accept_rate(obj)
+            % Fraction of accepted RJMCMC proposals (invalid ones count as
+            % rejected).
+            r = obj.n_acc / max(obj.n_prop, 1);
+        end
+
+        function n = n_saved(obj)
+            n = obj.bm.k - 1;
         end
 
         function save(obj)

@@ -58,6 +58,19 @@ classdef BassGibbsTest < BassTestCase
             end
         end
 
+        function gibbsAcceptRate(tc)
+            [X, y] = BassGibbsTest.makeData(80);
+            g = bassGibbs(X, y, 5);
+            tc.verifyEqual(g.accept_rate(), 0);
+            g.step(200);
+            tc.verifyEqual(g.n_prop, 200);
+            tc.verifyEqual(g.n_acc, sum(g.bm.state.count));
+            tc.verifyGreaterThan(g.accept_rate(), 0);
+            tc.verifyLessThan(g.accept_rate(), 1);
+            g.save(); g.save();
+            tc.verifyEqual(g.n_saved(), 2);
+        end
+
         function gibbsRecoversLatentRegression(tc)
             % z_i ~ N(f(x_i), s2), y_i ~ N(z_i, 0.1^2): the BASS block tracks f
             [X, ~, f] = BassGibbsTest.makeData(150);
