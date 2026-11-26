@@ -9,6 +9,8 @@ classdef BassData
         p
         bounds
         xx
+        ord     % ord(:, j): row indices sorting xx(:, j)
+        rnk     % rnk(i, j): position of row i in ord(:, j)
     end
 
     methods
@@ -24,6 +26,11 @@ classdef BassData
                 obj.bounds(i, 2) = max(xx(:, i));
             end
             obj.xx = normalizebass(obj.xx_orig, obj.bounds);
+            [~, obj.ord] = sort(obj.xx, 1);
+            obj.rnk = zeros(obj.n, obj.p);
+            for j = 1:obj.p
+                obj.rnk(obj.ord(:, j), j) = (1:obj.n)';
+            end
         end
     end
 end

@@ -253,10 +253,23 @@ classdef BassState < handle
                 tochange_basis = randsample(obj.nbasis,1);
                 tochange_int = randsample(obj.n_int(tochange_basis),1);
 
-                cand = genBasisChange(obj.knots(tochange_basis, 1:obj.n_int(tochange_basis)), ...
-                    obj.signs(tochange_basis, 1:obj.n_int(tochange_basis)), ...
-                    obj.vs(tochange_basis, 1:obj.n_int(tochange_basis)), ...
-                    obj.knots_ind(tochange_basis, 1:obj.n_int(tochange_basis)), tochange_int, obj.data.xx);
+                if obj.prior.p_local > 0 && rand < obj.prior.p_local
+                    width = obj.prior.local_width;
+                    if isnan(width), width = max(2, round(obj.data.n / 20)); end
+                    cand = genBasisChangeLocal(obj.knots(tochange_basis, 1:obj.n_int(tochange_basis)), ...
+                        obj.signs(tochange_basis, 1:obj.n_int(tochange_basis)), ...
+                        obj.vs(tochange_basis, 1:obj.n_int(tochange_basis)), ...
+                        obj.knots_ind(tochange_basis, 1:obj.n_int(tochange_basis)), tochange_int, ...
+                        obj.data, width);
+                    if ~cand.ok
+                        return
+                    end
+                else
+                    cand = genBasisChange(obj.knots(tochange_basis, 1:obj.n_int(tochange_basis)), ...
+                        obj.signs(tochange_basis, 1:obj.n_int(tochange_basis)), ...
+                        obj.vs(tochange_basis, 1:obj.n_int(tochange_basis)), ...
+                        obj.knots_ind(tochange_basis, 1:obj.n_int(tochange_basis)), tochange_int, obj.data.xx);
+                end
 
                 if sum(cand.basis > 0) < obj.prior.npart
                     return
@@ -357,6 +370,67 @@ classdef BassState < handle
         function mu = fitted(obj)
             % Current regression function at the training inputs.
             mu = obj.basis * obj.beta;
+        end
+
+        function cand = localChangeCand(obj)
+            % A local knot move (genBasisChangeLocal) that keeps beta, for
+            % a move made jointly with the response by the calling sampler
+            % (see bassGibbs.localChangeCandidate).  Returns [] for an
+            % invalid proposal, else the new basis matrix, the regression
+            % function B' beta at the training inputs (mu), and lpr, the log
+            % ratio of the g-prior density of beta under the new and the
+            % current basis:
+            %   log|B'B'|/2 - log|B'B|/2 - tau/(2 s2) (|B' beta|^2 - |B beta|^2).
+            cand = [];
+            if obj.nbasis == 0
+                return
+            end
+            i0 = double(obj.prior.intercept);
+            b = randsample(obj.nbasis, 1);
+            nk = obj.n_int(b);
+            f = randsample(nk, 1);
+            width = obj.prior.local_width;
+            if isnan(width), width = max(2, round(obj.data.n / 20)); end
+            c = genBasisChangeLocal(obj.knots(b, 1:nk), obj.signs(b, 1:nk), obj.vs(b, 1:nk), ...
+                obj.knots_ind(b, 1:nk), f, obj.data, width);
+            if ~c.ok || sum(c.basis > 0) < obj.prior.npart
+                return
+            end
+            if obj.prior.center_basis
+                c.basis = c.basis - mean(c.basis);
+            end
+            B1 = obj.basis;
+            B1(:, b + i0) = c.basis;
+            XtX1 = B1' * B1;
+            Qf = getQf(XtX1, B1' * obj.data.y);     % full-rank check, as in rjStep
+            if ~Qf.fullrank
+                return
+            end
+            mu0 = obj.basis * obj.beta;
+            mu1 = B1 * obj.beta;
+            cand = struct('b', b, 'c', c, 'basis', B1, 'XtX', XtX1, 'mu', mu1, ...
+                'lpr', sum(log(diag(Qf.R))) - sum(log(abs(diag(obj.R)))) ...
+                       - obj.tau / (2 * obj.s2) * (mu1' * mu1 - mu0' * mu0));
+        end
+
+        function obj = acceptLocalChangeCand(obj, cand, y)
+            % Install a candidate from localChangeCand, with the new
+            % response y (beta is unchanged).
+            nk = obj.n_int(cand.b);
+            obj.knots(cand.b, 1:nk) = cand.c.knots;
+            obj.knots_ind(cand.b, 1:nk) = cand.c.knots_ind;
+            obj.basis = cand.basis;
+            obj.XtX(1:obj.nc, 1:obj.nc) = cand.XtX;
+            obj.data.y = y(:);
+            obj.data.ssy = sum(obj.data.y .^ 2);
+            obj.Xty(1:obj.nc) = obj.basis' * obj.data.y;
+            Qf = getQf(obj.XtX(1:obj.nc, 1:obj.nc), obj.Xty(1:obj.nc));
+            obj.bhat = Qf.bhat;
+            obj.qf = Qf.qf;
+            obj.R = Qf.R;
+            obj.R_inv_t = obj.R \ eye(obj.nc);
+            obj.cmod = true;
+            obj.count(3) = obj.count(3) + 1;
         end
     end
 end

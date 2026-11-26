@@ -36,6 +36,11 @@ classdef bassGibbs < handle
     %                 center_basis = true gives a regression function that
     %                 averages to exactly zero over the training inputs.
     %   s2_fixed      hold s2 fixed at this value (default NaN: sample it)
+    %   p_local       probability that a change move is local: the knot moves
+    %                 to a nearby data point of its variable, up to
+    %                 local_width places away in sorted order (default 0:
+    %                 every change move redraws the knot uniformly)
+    %   local_width   (default NaN: max(2, round(n/20)))
     % nstore is the number of states save() can record.
 
     properties
@@ -65,6 +70,8 @@ classdef bassGibbs < handle
                 options.intercept = true
                 options.center_basis = false
                 options.s2_fixed = NaN
+                options.p_local (1,1) double {mustBeInRange(options.p_local, 0, 1)} = 0
+                options.local_width (1,1) double = NaN
             end
             y = y(:);
             b_tau = options.b_tau;
@@ -79,6 +86,8 @@ classdef bassGibbs < handle
             bp.intercept = options.intercept;
             bp.center_basis = options.center_basis;
             bp.s2_fixed = options.s2_fixed;
+            bp.p_local = options.p_local;
+            bp.local_width = options.local_width;
             obj.bm = BassModel(bd, bp, nstore);
             obj.bm.state.gibbsStep();       % so beta exists before the first step
         end
@@ -109,6 +118,23 @@ classdef bassGibbs < handle
         function mu = fitted(obj)
             % Current regression function at the training inputs (n x 1).
             mu = obj.bm.state.fitted();
+        end
+
+        function cand = localChangeCandidate(obj)
+            % A local knot move that keeps the coefficients, for the calling
+            % sampler to accept or reject jointly with a change of the
+            % response (BassState.localChangeCand): cand.mu is the new
+            % regression function at the training inputs and cand.lpr the
+            % log g-prior ratio of the coefficients.  [] if invalid.
+            cand = obj.bm.state.localChangeCand();
+        end
+
+        function acceptLocalChange(obj, cand, y)
+            % Install a candidate from localChangeCandidate with response y.
+            y = y(:);
+            obj.bm.state.acceptLocalChangeCand(cand, y);
+            obj.bm.data.y = y;
+            obj.bm.data.ssy = sum(y .^ 2);
         end
 
         function s2 = s2(obj)

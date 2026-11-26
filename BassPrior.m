@@ -19,6 +19,10 @@ classdef BassPrior
         intercept = true        % include a constant basis function
         center_basis = false    % center each basis column over the training inputs
         s2_fixed = NaN          % hold s2 at this value instead of sampling it
+        % Local knot moves (see genBasisChangeLocal).  p_local = 0 keeps the
+        % original sampler.
+        p_local = 0             % probability that a change move is local
+        local_width = NaN       % largest rank offset of a local move (NaN: max(2, round(n/20)))
     end
 
     methods
